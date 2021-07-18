@@ -1,3 +1,6 @@
+#include <QTime>
+#include <cmath>
+
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
@@ -10,7 +13,6 @@ MainWindow::MainWindow(QWidget *parent) :
     secondTimer=new QTimer(this);
     secondTimer->start(50);
     connect(secondTimer,SIGNAL(timeout()),SLOT(secondTimerEvent()));
-    secondTimer->stop();
     mainTimer=new QTimer(this);
     mainTimer->start(1000);
     connect(mainTimer,SIGNAL(timeout()),SLOT(mainTimerEvent()));
@@ -40,7 +42,9 @@ void MainWindow::changeEvent(QEvent *e)
     }
 }
 
-void drawRect(QPainter& painter, QRect& rect, QColor& color) {
+void drawRect(QPainter& painter, QRect& _rect, QColor& color) {
+    QRectF rect(_rect.left()+0.5f, _rect.top()+0.5f, _rect.width()-1.0f, _rect.height()-1.0f);
+
     painter.fillRect(rect, color);
 
     painter.setPen(QColor(color.red()+0x33, color.green()+0x33, color.blue()+0x33));
@@ -57,6 +61,9 @@ void MainWindow::paintEvent(QPaintEvent *e){
     int x,y;
     QRect mainRect(WS_PX-1,WS_PX-1,SIDE_LEN*WIDTH_SHAPE_NUM+1,SIDE_LEN*HEIGHT_SHAPE_NUM+1);
     QRect nextRect(2*WS_PX+WIDTH_SHAPE_NUM*SIDE_LEN-1,WS_PX-1,SIDE_LEN*4+1,SIDE_LEN*4+1);
+
+    painter.setRenderHints(QPainter::Antialiasing); // 防止锯齿
+
     painter.fillRect(0, 0, width(), height(), QColor(255,255,255));
     painter.setPen(QColor(0x33,0x33,0x33));
     painter.drawRect(mainRect); // 主游戏窗
@@ -97,13 +104,51 @@ void MainWindow::paintEvent(QPaintEvent *e){
     }
 
     {
-        QPointF p(nextRect.left() + nextRect.width()/2, mainRect.top() + mainRect.height()/2);
+        QRect rect(nextRect.x(), SIDE_LEN*(HEIGHT_SHAPE_NUM-4)/2+WS_PX, nextRect.width(), nextRect.height());
+        QPointF cp = rect.center();
+        int radius = rect.width() / 2;
+        QTime t = QTime::currentTime();
+        float sRad = (90.0f - t.second() * 6.0f) * 3.14159265f / 180.0f;
+        float mRad = (90.0f - t.minute() * 6.0f - 6.0f * t.second() / 60.0f) * 3.14159265f / 180.0f;
+        float hRad = (90.0f - t.hour() * 30.0f - 30.0f * t.minute() / 60.0f) * 3.14159265f / 180.0f;
 
-        painter.setPen(Qt::red);
-        painter.setFont(QFont(QString(""), 80, 100, false));
-        p.setX(p.x() - painter.fontInfo().pixelSize() / 2);
-        p.setY(p.y() + painter.fontInfo().pixelSize() / 2);
-        painter.drawText(p, QString("囍"));
+        QPen pen(Qt::black);
+
+        pen.setWidth(3);
+        painter.setPen(pen);
+        painter.drawEllipse(rect);
+
+        painter.drawText(QPointF(cp.x()-radius/2, rect.bottom()+WS_PX*1.5f), QString("%1:%2:%3").arg(t.hour(),2,10,QChar('0')).arg(t.minute(),2,10,QChar('0')).arg(t.second(),2,10,QChar('0')));
+
+        painter.setFont(QFont(QString(""), 8, 100, false));
+        for(int i=0; i<360; i+=6) {
+            float rad = (60.0f - i) * 3.14159265f / 180.0f;
+            QPointF p1 = cp + QPointF(radius * 0.9f * std::cos(rad), - radius * 0.9f * std::sin(rad));
+            QPointF p2 = cp + QPointF(radius * std::cos(rad), - radius * std::sin(rad));
+            pen.setWidth(i%30==0 ? 3 : 1);
+            painter.setPen(pen);
+            painter.drawLine(p1, p2);
+            if(pen.width() > 1) {
+                QPointF p3 = cp + QPointF(radius * 0.8f * std::cos(rad), - radius * 0.8f * std::sin(rad));
+                p3.setX(p3.x()-painter.fontInfo().pixelSize()/3);
+                p3.setY(p3.y()+painter.fontInfo().pixelSize()/3);
+                painter.drawText(p3, QString("%1").arg(i/30+1));
+            }
+
+        }
+
+        pen.setWidth(5);
+        painter.setPen(pen);
+        painter.drawLine(cp, cp + QPointF(radius * 0.5f * std::cos(hRad), - radius * 0.5f * std::sin(hRad)));
+        pen.setWidth(3);
+        painter.setPen(pen);
+        painter.drawLine(cp, cp + QPointF(radius * 0.6f * std::cos(mRad), - radius * 0.6f * std::sin(mRad)));
+        {
+            QPen pen(Qt::red);
+            pen.setWidth(1);
+            painter.setPen(pen);
+            painter.drawLine(cp, cp + QPointF(radius * 0.7f * std::cos(sRad), - radius * 0.7f * std::sin(sRad)));
+        }
     }
 
     // 下一个形状
@@ -154,7 +199,7 @@ void MainWindow::paintEvent(QPaintEvent *e){
 
 void MainWindow::secondTimerEvent()
 {
-    if(endGame) repaint();
+    repaint();
 }
 void MainWindow::mainTimerEvent()
 {
@@ -237,7 +282,6 @@ void MainWindow::setNextShape(){
     if(!ifMovable(nextShape,sX,sY)){
         curShape=0;
         mainTimer->stop();
-        secondTimer->start();
         endGame=true;
         overColor = randColor();
         repaint();
@@ -266,7 +310,6 @@ bool MainWindow::ifMovable(int shape,int X,int Y){
     return true;
 }
 void MainWindow::initGame(){
-    secondTimer->stop();
     endGame=false;
     curShape=0;
     nextShape=SHAPES[qrand()%SHAPE_NUM];
