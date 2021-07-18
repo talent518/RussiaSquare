@@ -1,4 +1,6 @@
+#include <iostream>
 #include <QTime>
+#include <QDesktopWidget>
 #include <cmath>
 
 #include "mainwindow.h"
@@ -9,7 +11,17 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
     resize(3*WS_PX + (WIDTH_SHAPE_NUM+4)*SIDE_LEN, 2*WS_PX + HEIGHT_SHAPE_NUM*SIDE_LEN);
+    setFixedSize(width(), height());
+
+    {
+        QDesktopWidget *dsk = QApplication::desktop();
+        QRect rect = dsk->availableGeometry();
+        move(rect.x() + (rect.width() - width()) / 2, rect.y() + (rect.height() - height()) /2);
+    }
+
     secondTimer=new QTimer(this);
     secondTimer->start(50);
     connect(secondTimer,SIGNAL(timeout()),SLOT(secondTimerEvent()));
@@ -21,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent) :
     nextColor = randColor();
     initGame();
     overStep = -10;
+    overAlpha = 0;
 }
 
 MainWindow::~MainWindow()
@@ -69,14 +82,14 @@ void MainWindow::paintEvent(QPaintEvent *e){
     painter.drawRect(mainRect); // 主游戏窗
     painter.drawRect(nextRect); // 下一个形状窗
 
-    painter.setFont(QFont(QString(""), 16, 100, false));
+    painter.setFont(QFont(QString(""), 12, 100, false));
 
     y = WS_PX + painter.fontInfo().pixelSize() / 2;
     {
         QString strs[] = {QString("分数：%1").arg(scoreNum), QString("行数：%1").arg(lineNum)};
         QPointF p(nextRect.left(), nextRect.bottom() + WS_PX);
 
-        painter.setPen(curColor);
+        painter.setPen(QColor(0xff,0x22,0x00));
         for(int i=0; i<sizeof(strs)/sizeof(QString); i++) {
             p.setY(p.y() + y);
             painter.drawText(p, strs[i]);
@@ -104,7 +117,7 @@ void MainWindow::paintEvent(QPaintEvent *e){
     }
 
     {
-        QRect rect(nextRect.x(), SIDE_LEN*(HEIGHT_SHAPE_NUM-4)/2+WS_PX, nextRect.width(), nextRect.height());
+        QRect rect(nextRect.x(), SIDE_LEN*(HEIGHT_SHAPE_NUM-4)/2, nextRect.width(), nextRect.height());
         QPointF cp = rect.center();
         int radius = rect.width() / 2;
         QTime t = QTime::currentTime();
@@ -118,7 +131,14 @@ void MainWindow::paintEvent(QPaintEvent *e){
         painter.setPen(pen);
         painter.drawEllipse(rect);
 
-        painter.drawText(QPointF(cp.x()-radius/2, rect.bottom()+WS_PX*1.5f), QString("%1:%2:%3").arg(t.hour(),2,10,QChar('0')).arg(t.minute(),2,10,QChar('0')).arg(t.second(),2,10,QChar('0')));
+        {
+            QString str(QString("%1:%2:%3").arg(t.hour(),2,10,QChar('0')).arg(t.minute(),2,10,QChar('0')).arg(t.second(),2,10,QChar('0')));
+            QRect rect1(rect.x(), rect.bottom() + WS_PX, rect.width(), SIDE_LEN);
+            QRect rect2(painter.boundingRect(rect1, Qt::AlignCenter, str));
+
+            painter.setFont(QFont(QString(""), 14, 100, false));
+            painter.drawText(rect1, Qt::AlignCenter, str, &rect2);
+        }
 
         painter.setFont(QFont(QString(""), 8, 100, false));
         for(int i=0; i<360; i+=6) {
@@ -174,25 +194,26 @@ void MainWindow::paintEvent(QPaintEvent *e){
 
     // 游戏结束
     if(endGame){
-        QString str("游戏结束！");
-        QRect rect(painter.boundingRect(mainRect, Qt::AlignCenter, str));
+        QString str("游戏结束");
 
-        int alpha = overColor.alpha() + overStep;
+        overAlpha += overStep;
         if(overStep > 0) {
-            if(alpha > 0xff) {
-                alpha = 0xff;
+            if(overAlpha > 255) {
+                overAlpha = 255;
                 overStep = -overStep;
             }
         } else {
-            if(alpha < 0) {
-                alpha = 0;
+            if(overAlpha < -255) {
+                overAlpha = -255;
                 overStep = -overStep;
                 overColor = randColor();
             }
         }
-        overColor.setAlpha(alpha);
+        overColor.setAlpha(255-std::abs(overAlpha));
         painter.setPen(overColor);
-        painter.setFont(QFont(QString(""), 40, 100, false));
+        painter.setFont(QFont(QString(""), SIDE_LEN, 100, false));
+        QRect rect(painter.boundingRect(mainRect, Qt::AlignCenter, str));
+        mainRect.moveTop(overAlpha);
         painter.drawText(mainRect, Qt::AlignCenter, str, &rect);
     }
 }

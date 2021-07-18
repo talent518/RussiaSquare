@@ -12,8 +12,8 @@
 #include <string>
 #include <QStack>
 
-const int WS_PX = 20;
-const int SIDE_LEN = 40;
+const int WS_PX = 15;
+const int SIDE_LEN = 30;
 const int HEIGHT_SHAPE_NUM = 20;
 const int WIDTH_SHAPE_NUM = 10;
 const int INIT_X = 3;
@@ -68,6 +68,7 @@ private:
     QColor curColor,nextColor;//当前颜色和下一个颜色
     QColor overColor;
     int overStep;
+    int overAlpha;
     bool endGame;
 
 public slots:
