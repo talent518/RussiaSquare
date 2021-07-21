@@ -187,9 +187,9 @@ void MainWindow::paintEvent(QPaintEvent *e){
     // 主游戏窗
     for(y=0;y<HEIGHT_SHAPE_NUM;y++)
         for(x=0;x<WIDTH_SHAPE_NUM;x++)
-            if(squareRecords[x][y]){
+            if(squareRecords[y][x]){
                 QRect rect(WS_PX+x*SIDE_LEN,WS_PX+y*SIDE_LEN,SIDE_LEN,SIDE_LEN);
-                ::drawRect(painter, rect, colorRecords[x][y]);
+                ::drawRect(painter, rect, colorRecords[y][x]);
             }
 
     // 游戏结束
@@ -273,6 +273,7 @@ void MainWindow::moveShape(Move m){
             curShape=rotateShape(curShape);
         break;
     case(Down):
+        // std::cout << "down" << std::endl;
         if(ifMovable(curShape,sX,sY+1)){
             sY++;
         }else{
@@ -299,13 +300,30 @@ void MainWindow::moveShape(Move m){
 }
 void MainWindow::setNextShape(){
     if(endGame) return;
-    sX=INIT_X;sY=INIT_Y;
-    if(!ifMovable(nextShape,sX,sY)){
+    if(sY<0) goto end;
+
+    {
+        int x, y, mY = 0;
+        for(y=3; y>=0; y--) {
+            for(x=0; x<4; x++) {
+                if(getPointB(nextShape, x, y)) {
+                    mY = std::max(mY, y);
+                    break;
+                }
+            }
+        }
+        sX=(WIDTH_SHAPE_NUM-4)/2;sY=-mY-1;
+        // std::cout << "mY: " << mY << ", sX: " << sX << ", sY: " << sY << std::endl;
+    }
+
+    if(!ifMovable(nextShape,sX,sY+1)){
+        end:
         curShape=0;
         mainTimer->stop();
         endGame=true;
         overColor = randColor();
         repaint();
+        return;
     }
     curShape=nextShape;
     nextShape=SHAPES[qrand()%SHAPE_NUM];
@@ -326,20 +344,20 @@ bool MainWindow::ifMovable(int shape,int X,int Y){
     for(int y=0;y<4;y++)
         for(int x=0;x<4;x++)
             if(getPointB(shape,x,y))
-                if(X+x<0 || X+x>=WIDTH_SHAPE_NUM || Y+y>=HEIGHT_SHAPE_NUM || (Y+y>=0 && squareRecords[X+x][Y+y]))
+                if(X+x<0 || X+x>=WIDTH_SHAPE_NUM || Y+y>=HEIGHT_SHAPE_NUM || (Y+y>=0 && squareRecords[Y+y][X+x]))
                     return false;
     return true;
 }
 void MainWindow::initGame(){
     endGame=false;
+    sX = sY = 0;
     curShape=0;
     nextShape=SHAPES[qrand()%SHAPE_NUM];
     nextColor=randColor();
-    sX=INIT_X;
-    sY=INIT_Y;scoreNum=0;lineNum=0;
+    scoreNum=0;lineNum=0;
     for(int y=0;y<HEIGHT_SHAPE_NUM;y++)
         for(int x=0;x<WIDTH_SHAPE_NUM;x++)
-            squareRecords[x][y]=false;
+            squareRecords[y][x]=false;
 }
 QColor MainWindow::randColor(){
     int r,g,b;
@@ -349,41 +367,57 @@ QColor MainWindow::randColor(){
     return QColor(COLORS[r],COLORS[g],COLORS[b]);
 }
 void MainWindow::setRecord(){
-    int x,y,_x,_y,size=0;
+    int x,y,size=0;
     bool flag;
     QStack<int> stack;
 
-    for(y=0;y<4;y++)
+    for(y=0;y<4;y++) {
+        if(sY+y<0) continue;
+
         for(x=0;x<4;x++){
             if(getPointB(curShape,x,y)){
-                squareRecords[sX+x][sY+y]=true;
-                colorRecords[sX+x][sY+y]=curColor;
-                flag=true;
-                for(_x=0;_x<WIDTH_SHAPE_NUM;_x++)
-                    if(!squareRecords[_x][sY+y]){
-                        flag=false;
-                        break;
-                    }
-                if(flag)
-                    stack.push(sY+y);
+                squareRecords[sY+y][sX+x]=true;
+                colorRecords[sY+y][sX+x]=curColor;
             }
         }
+
+        flag=true;
+        for(x=0;x<WIDTH_SHAPE_NUM;x++) {
+            if(!squareRecords[sY+y][x]){
+                flag=false;
+                break;
+            }
+        }
+        if(flag) {
+            stack.push(sY+y);
+        }
+    }
     if(stack.size()){
         scoreNum+=stack.size()*2-1;
         lineNum+=stack.count();
+
+        std::cout << stack.size() << ':';
+        for(y=0;y<stack.size();y++)
+            std::cout << ' ' << stack.value(y);
+        std::cout << std::endl;
+
         y=stack.pop();
         size=1;
         do{
             while(!stack.isEmpty() && y-size==stack.last()){
                 size++;
-                qDebug()<<stack.last();
-                _y=stack.pop();
+                stack.pop();
             }
             for(x=0;x<WIDTH_SHAPE_NUM;x++){
-                squareRecords[x][y]=squareRecords[x][y-size];
-                colorRecords[x][y]=colorRecords[x][y-size];
+                squareRecords[y][x]=squareRecords[y-size][x];
+                colorRecords[y][x]=colorRecords[y-size][x];
             }
             y--;
         }while(y-size>=0);
+        for(;y>=0;y--) {
+            for(x=0;x<WIDTH_SHAPE_NUM;x++) {
+                squareRecords[y][x]=false;
+            }
+        }
     }
 }

@@ -16,8 +16,6 @@ const int WS_PX = 15;
 const int SIDE_LEN = 30;
 const int HEIGHT_SHAPE_NUM = 20;
 const int WIDTH_SHAPE_NUM = 10;
-const int INIT_X = 3;
-const int INIT_Y = -1;
 const int SHAPES[]={0x4444,0x4460,0x2260,0x0C60,0x06C0,0x0660,0x04E0};
 const int SHAPE_NUM=sizeof(SHAPES)/sizeof(int);
 const int COLORS[]={0x33,0x66,0x99,0xcc};
@@ -62,8 +60,8 @@ private:
     Ui::MainWindow *ui;
     int sX,sY,scoreNum,lineNum;//当前X,Y坐标,得分及行数
     QTimer *mainTimer,*secondTimer;//主从计时器
-    bool squareRecords[WIDTH_SHAPE_NUM][HEIGHT_SHAPE_NUM];//图形记录
-    QColor colorRecords[WIDTH_SHAPE_NUM][HEIGHT_SHAPE_NUM];//颜色记录
+    bool squareRecords[HEIGHT_SHAPE_NUM][WIDTH_SHAPE_NUM];//图形记录
+    QColor colorRecords[HEIGHT_SHAPE_NUM][WIDTH_SHAPE_NUM];//颜色记录
     int curShape,nextShape;//当前形状和下一个形状
     QColor curColor,nextColor;//当前颜色和下一个颜色
     QColor overColor;
