@@ -32,8 +32,8 @@ MainWindow::MainWindow(QWidget *parent) :
     qsrand(clock());
     nextColor = randColor();
     initGame();
-    overStep = -10;
-    overAlpha = 0;
+    overStep = -5;
+    overTop = 0;
 }
 
 MainWindow::~MainWindow()
@@ -69,33 +69,60 @@ void drawRect(QPainter& painter, QRect& _rect, QColor& color) {
     painter.drawLine(rect.bottomLeft(), rect.bottomRight()); // 下边线
 }
 
+QColor notColor(QColor color) {
+    return QColor(0xff-color.red(), 0xff-color.green(), 0xff-color.blue());
+}
+
 void MainWindow::paintEvent(QPaintEvent *e){
     QPainter painter(this);
     int x,y;
     QRect mainRect(WS_PX-1,WS_PX-1,SIDE_LEN*WIDTH_SHAPE_NUM+1,SIDE_LEN*HEIGHT_SHAPE_NUM+1);
     QRect nextRect(2*WS_PX+WIDTH_SHAPE_NUM*SIDE_LEN-1,WS_PX-1,SIDE_LEN*4+1,SIDE_LEN*4+1);
 
-    painter.setRenderHints(QPainter::Antialiasing); // 防止锯齿
+    painter.fillRect(0, 0, width(), height(), QColor(0xff,0xff,0xff));
+    painter.setPen(QColor(0x66,0x66,0x66));
+    painter.drawRect(mainRect); // 主游戏窗边框
+    painter.drawRect(nextRect); // 下一个形状窗边框
 
-    painter.fillRect(0, 0, width(), height(), QColor(255,255,255));
-    painter.setPen(QColor(0x33,0x33,0x33));
-    painter.drawRect(mainRect); // 主游戏窗
-    painter.drawRect(nextRect); // 下一个形状窗
+    // 下一个形状方块
+    for(y=0;y<4;y++)
+        for(x=0;x<4;x++){
+            if(x+sX>=0 && y+sY>=0 && x+sX<WIDTH_SHAPE_NUM && y+sY<HEIGHT_SHAPE_NUM && getPointB(curShape,x,y)){
+                QRect rect(WS_PX+(x+sX)*SIDE_LEN,WS_PX+(y+sY)*SIDE_LEN,SIDE_LEN,SIDE_LEN);
+                ::drawRect(painter, rect, curColor);
+            }
+            if(getPointB(nextShape,x,y)){
+                QRect rect(2*WS_PX+(x+WIDTH_SHAPE_NUM)*SIDE_LEN,WS_PX+y*SIDE_LEN,SIDE_LEN,SIDE_LEN);
+                ::drawRect(painter, rect, nextColor);
+            }
+        }
 
-    painter.setFont(QFont(QString(""), 12, 100, false));
+    // 主游戏窗方块
+    for(y=0;y<HEIGHT_SHAPE_NUM;y++)
+        for(x=0;x<WIDTH_SHAPE_NUM;x++)
+            if(squareRecords[y][x]){
+                QRect rect(WS_PX+x*SIDE_LEN,WS_PX+y*SIDE_LEN,SIDE_LEN,SIDE_LEN);
+                ::drawRect(painter, rect, colorRecords[y][x]);
+            }
 
+    // 防止锯齿
+    painter.setRenderHints(QPainter::Antialiasing|QPainter::SmoothPixmapTransform);
+
+    // 绘制分数和行数
     y = WS_PX + painter.fontInfo().pixelSize() / 2;
     {
         QString strs[] = {QString("分数：%1").arg(scoreNum), QString("行数：%1").arg(lineNum)};
         QPointF p(nextRect.left(), nextRect.bottom() + WS_PX);
 
         painter.setPen(QColor(0xff,0x22,0x00));
-        for(int i=0; i<sizeof(strs)/sizeof(QString); i++) {
+        painter.setFont(QFont(QString(""), 12, 100, false));
+        for(int i=0; i < (int)(sizeof(strs)/sizeof(QString)); i++) {
             p.setY(p.y() + y);
             painter.drawText(p, strs[i]);
         }
     }
 
+    // 绘制帮助
     y = WS_PX + painter.fontInfo().pixelSize() / 2;
     {
         QString strs[] = {
@@ -116,6 +143,7 @@ void MainWindow::paintEvent(QPaintEvent *e){
         }
     }
 
+    // 绘制时钟
     {
         QRect rect(nextRect.x(), SIDE_LEN*(HEIGHT_SHAPE_NUM-4)/2, nextRect.width(), nextRect.height());
         QPointF cp = rect.center();
@@ -125,12 +153,50 @@ void MainWindow::paintEvent(QPaintEvent *e){
         float mRad = (90.0f - t.minute() * 6.0f - 6.0f * t.second() / 60.0f) * 3.14159265f / 180.0f;
         float hRad = (90.0f - t.hour() * 30.0f - 30.0f * t.minute() / 60.0f) * 3.14159265f / 180.0f;
 
-        QPen pen(Qt::black);
+        QPen pen(QColor(0x33,0x33,0x33));
 
+        // 表盘
         pen.setWidth(3);
         painter.setPen(pen);
         painter.drawEllipse(rect);
+        painter.setFont(QFont(QString(""), 8, 100, false));
+        for(int i=0; i<360; i+=6) {
+            float rad = (90.0f - i) * 3.14159265f / 180.0f;
+            QPointF p1 = cp + QPointF(radius * 0.9f * std::cos(rad), - radius * 0.9f * std::sin(rad));
+            QPointF p2 = cp + QPointF((radius - 1.5f) * std::cos(rad), - (radius - 1.5f) * std::sin(rad));
+            pen.setWidth(i%30==0 ? (i%90==0 ? 4 : 2) : 1); // cout << i << ": " << pen.width() << endl;
+            painter.setPen(pen);
+            painter.drawLine(p1, p2);
+            if(pen.width() > 1) {
+                QPointF p3 = cp + QPointF(radius * 0.78f * std::cos(rad), - radius * 0.78f * std::sin(rad));
+                QString str = QString("%1").arg(i == 0 ? 12 : i/30);
+                p3.setX(p3.x()-painter.fontInfo().pixelSize()*str.length()/3.0f+1.5f);
+                p3.setY(p3.y()+painter.fontInfo().pixelSize()/3.0f+1.0f);
+                painter.drawText(p3, str);
+            }
 
+        }
+
+        pen.setColor(Qt::black);
+
+        // 时针
+        pen.setWidth(3);
+        painter.setPen(pen);
+        painter.drawLine(cp, cp + QPointF(radius * 0.5f * std::cos(hRad), - radius * 0.5f * std::sin(hRad)));
+
+        // 分针
+        pen.setWidth(2);
+        painter.setPen(pen);
+        painter.drawLine(cp, cp + QPointF(radius * 0.65f * std::cos(mRad), - radius * 0.65f * std::sin(mRad)));
+
+        pen.setColor(Qt::red);
+
+        // 秒针
+        pen.setWidth(1);
+        painter.setPen(pen);
+        painter.drawLine(cp, cp + QPointF(radius * 0.7f * std::cos(sRad), - radius * 0.7f * std::sin(sRad)));
+
+        // 数字时间
         {
             QString str(QString("%1:%2:%3").arg(t.hour(),2,10,QChar('0')).arg(t.minute(),2,10,QChar('0')).arg(t.second(),2,10,QChar('0')));
             QRect rect1(rect.x(), rect.bottom() + WS_PX, rect.width(), SIDE_LEN);
@@ -139,81 +205,38 @@ void MainWindow::paintEvent(QPaintEvent *e){
             painter.setFont(QFont(QString(""), 14, 100, false));
             painter.drawText(rect1, Qt::AlignCenter, str, &rect2);
         }
-
-        painter.setFont(QFont(QString(""), 8, 100, false));
-        for(int i=0; i<360; i+=6) {
-            float rad = (60.0f - i) * 3.14159265f / 180.0f;
-            QPointF p1 = cp + QPointF(radius * 0.9f * std::cos(rad), - radius * 0.9f * std::sin(rad));
-            QPointF p2 = cp + QPointF(radius * std::cos(rad), - radius * std::sin(rad));
-            pen.setWidth(i%30==0 ? 3 : 1);
-            painter.setPen(pen);
-            painter.drawLine(p1, p2);
-            if(pen.width() > 1) {
-                QPointF p3 = cp + QPointF(radius * 0.8f * std::cos(rad), - radius * 0.8f * std::sin(rad));
-                p3.setX(p3.x()-painter.fontInfo().pixelSize()/3);
-                p3.setY(p3.y()+painter.fontInfo().pixelSize()/3);
-                painter.drawText(p3, QString("%1").arg(i/30+1));
-            }
-
-        }
-
-        pen.setWidth(5);
-        painter.setPen(pen);
-        painter.drawLine(cp, cp + QPointF(radius * 0.5f * std::cos(hRad), - radius * 0.5f * std::sin(hRad)));
-        pen.setWidth(3);
-        painter.setPen(pen);
-        painter.drawLine(cp, cp + QPointF(radius * 0.6f * std::cos(mRad), - radius * 0.6f * std::sin(mRad)));
-        {
-            QPen pen(Qt::red);
-            pen.setWidth(1);
-            painter.setPen(pen);
-            painter.drawLine(cp, cp + QPointF(radius * 0.7f * std::cos(sRad), - radius * 0.7f * std::sin(sRad)));
-        }
     }
-
-    // 下一个形状
-    for(y=0;y<4;y++)
-        for(x=0;x<4;x++){
-            if(x+sX>=0 && y+sY>=0 && x+sX<WIDTH_SHAPE_NUM && y+sY<HEIGHT_SHAPE_NUM && getPointB(curShape,x,y)){
-                QRect rect(WS_PX+(x+sX)*SIDE_LEN,WS_PX+(y+sY)*SIDE_LEN,SIDE_LEN,SIDE_LEN);
-                ::drawRect(painter, rect, curColor);
-            }
-            if(getPointB(nextShape,x,y)){
-                QRect rect(2*WS_PX+(x+WIDTH_SHAPE_NUM)*SIDE_LEN,WS_PX+y*SIDE_LEN,SIDE_LEN,SIDE_LEN);
-                ::drawRect(painter, rect, nextColor);
-            }
-        }
-
-    // 主游戏窗
-    for(y=0;y<HEIGHT_SHAPE_NUM;y++)
-        for(x=0;x<WIDTH_SHAPE_NUM;x++)
-            if(squareRecords[y][x]){
-                QRect rect(WS_PX+x*SIDE_LEN,WS_PX+y*SIDE_LEN,SIDE_LEN,SIDE_LEN);
-                ::drawRect(painter, rect, colorRecords[y][x]);
-            }
 
     // 游戏结束
     if(endGame){
         QString str("游戏结束");
 
-        overAlpha += overStep;
+        overTop += overStep;
         if(overStep > 0) {
-            if(overAlpha > 255) {
-                overAlpha = 255;
+            if(overTop > 0xff) {
+                overTop = 0xff;
                 overStep = -overStep;
+                overBackColor = randColor();
+                overFrontColor = notColor(overBackColor);
             }
         } else {
-            if(overAlpha < -255) {
-                overAlpha = -255;
+            if(overTop < -0xff) {
+                overTop = -0xff;
                 overStep = -overStep;
-                overColor = randColor();
+                overBackColor = randColor();
+                overFrontColor = notColor(overBackColor);
             }
         }
-        overColor.setAlpha(255-std::abs(overAlpha));
-        painter.setPen(overColor);
-        painter.setFont(QFont(QString(""), SIDE_LEN, 100, false));
+        mainRect.moveTop(mainRect.y() + overTop);
+
         QRect rect(painter.boundingRect(mainRect, Qt::AlignCenter, str));
-        mainRect.moveTop(overAlpha);
+
+        painter.setPen(overBackColor);
+        painter.setFont(QFont(QString(""), SIDE_LEN*1.5, 200, false));
+        painter.drawText(mainRect, Qt::AlignCenter, str, &rect);
+
+        painter.setPen(overFrontColor);
+        painter.setFont(QFont(QString(""), SIDE_LEN*1.5, 175, false));
         painter.drawText(mainRect, Qt::AlignCenter, str, &rect);
     }
 }
@@ -321,7 +344,10 @@ void MainWindow::setNextShape(){
         curShape=0;
         mainTimer->stop();
         endGame=true;
-        overColor = randColor();
+        overStep=-5;
+        overTop=0;
+        overBackColor = randColor();
+        overFrontColor = notColor(overBackColor);
         repaint();
         return;
     }

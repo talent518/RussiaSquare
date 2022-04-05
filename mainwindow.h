@@ -64,9 +64,9 @@ private:
     QColor colorRecords[HEIGHT_SHAPE_NUM][WIDTH_SHAPE_NUM];//颜色记录
     int curShape,nextShape;//当前形状和下一个形状
     QColor curColor,nextColor;//当前颜色和下一个颜色
-    QColor overColor;
+    QColor overBackColor, overFrontColor;
     int overStep;
-    int overAlpha;
+    int overTop;
     bool endGame;
 
 public slots:
