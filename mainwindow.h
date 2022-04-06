@@ -20,6 +20,7 @@ const int SHAPES[]={0x4444,0x4460,0x2260,0x0C60,0x06C0,0x0660,0x04E0};
 const int SHAPE_NUM=sizeof(SHAPES)/sizeof(int);
 const int COLORS[]={0x33,0x66,0x99,0xcc};
 const int COLOR_NUM=sizeof(COLORS)/sizeof(int);
+const double PI = 3.14159265f;
 
 using namespace std;
 
@@ -56,6 +57,10 @@ protected:
     QColor randColor();
     void setRecord();
 
+    void initBall();
+    void calcBall();
+    void paintBall(QPainter& painter);
+
 private:
     Ui::MainWindow *ui;
     int sX,sY,scoreNum,lineNum;//当前X,Y坐标,得分及行数
@@ -67,6 +72,10 @@ private:
     QColor overBackColor, overFrontColor;
     int overStep;
     int overTop;
+    QPointF overPoint1, overPoint2, overPoint3;
+    double overAngle, overAngle2, overRadius, overMaxRadius;
+    QColor overBallColor;
+    int overBall;
     bool endGame;
 
 public slots:

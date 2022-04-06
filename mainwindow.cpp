@@ -147,7 +147,7 @@ void MainWindow::paintEvent(QPaintEvent *e){
     {
         QRect rect(nextRect.x(), SIDE_LEN*(HEIGHT_SHAPE_NUM-4)/2, nextRect.width(), nextRect.height());
         QPointF cp = rect.center();
-        int radius = rect.width() / 2;
+        int overAngle = rect.width() / 2;
         QTime t = QTime::currentTime();
         float sRad = (90.0f - t.second() * 6.0f) * 3.14159265f / 180.0f;
         float mRad = (90.0f - t.minute() * 6.0f - 6.0f * t.second() / 60.0f) * 3.14159265f / 180.0f;
@@ -162,13 +162,13 @@ void MainWindow::paintEvent(QPaintEvent *e){
         painter.setFont(QFont(QString(""), 8, 100, false));
         for(int i=0; i<360; i+=6) {
             float rad = (90.0f - i) * 3.14159265f / 180.0f;
-            QPointF p1 = cp + QPointF(radius * 0.9f * std::cos(rad), - radius * 0.9f * std::sin(rad));
-            QPointF p2 = cp + QPointF((radius - 1.5f) * std::cos(rad), - (radius - 1.5f) * std::sin(rad));
+            QPointF p1 = cp + QPointF(overAngle * 0.9f * std::cos(rad), - overAngle * 0.9f * std::sin(rad));
+            QPointF p2 = cp + QPointF((overAngle - 1.5f) * std::cos(rad), - (overAngle - 1.5f) * std::sin(rad));
             pen.setWidth(i%30==0 ? (i%90==0 ? 4 : 2) : 1); // cout << i << ": " << pen.width() << endl;
             painter.setPen(pen);
             painter.drawLine(p1, p2);
             if(pen.width() > 1) {
-                QPointF p3 = cp + QPointF(radius * 0.78f * std::cos(rad), - radius * 0.78f * std::sin(rad));
+                QPointF p3 = cp + QPointF(overAngle * 0.78f * std::cos(rad), - overAngle * 0.78f * std::sin(rad));
                 QString str = QString("%1").arg(i == 0 ? 12 : i/30);
                 p3.setX(p3.x()-painter.fontInfo().pixelSize()*str.length()/3.0f+1.5f);
                 p3.setY(p3.y()+painter.fontInfo().pixelSize()/3.0f+1.0f);
@@ -182,19 +182,19 @@ void MainWindow::paintEvent(QPaintEvent *e){
         // 时针
         pen.setWidth(3);
         painter.setPen(pen);
-        painter.drawLine(cp, cp + QPointF(radius * 0.5f * std::cos(hRad), - radius * 0.5f * std::sin(hRad)));
+        painter.drawLine(cp, cp + QPointF(overAngle * 0.5f * std::cos(hRad), - overAngle * 0.5f * std::sin(hRad)));
 
         // 分针
         pen.setWidth(2);
         painter.setPen(pen);
-        painter.drawLine(cp, cp + QPointF(radius * 0.65f * std::cos(mRad), - radius * 0.65f * std::sin(mRad)));
+        painter.drawLine(cp, cp + QPointF(overAngle * 0.65f * std::cos(mRad), - overAngle * 0.65f * std::sin(mRad)));
 
         pen.setColor(Qt::red);
 
         // 秒针
         pen.setWidth(1);
         painter.setPen(pen);
-        painter.drawLine(cp, cp + QPointF(radius * 0.7f * std::cos(sRad), - radius * 0.7f * std::sin(sRad)));
+        painter.drawLine(cp, cp + QPointF(overAngle * 0.7f * std::cos(sRad), - overAngle * 0.7f * std::sin(sRad)));
 
         // 数字时间
         {
@@ -210,6 +210,8 @@ void MainWindow::paintEvent(QPaintEvent *e){
     // 游戏结束
     if(endGame){
         QString str("游戏结束");
+
+        paintBall(painter);
 
         overTop += overStep;
         if(overStep > 0) {
@@ -348,6 +350,7 @@ void MainWindow::setNextShape(){
         overTop=0;
         overBackColor = randColor();
         overFrontColor = notColor(overBackColor);
+        initBall();
         repaint();
         return;
     }
@@ -446,4 +449,147 @@ void MainWindow::setRecord(){
             }
         }
     }
+}
+
+void MainWindow::initBall() {
+    const int width = WIDTH_SHAPE_NUM * SIDE_LEN - SIDE_LEN;
+    const int height = HEIGHT_SHAPE_NUM * SIDE_LEN - SIDE_LEN;
+    overPoint1.setX(qrand() % width);
+    overPoint1.setY(qrand() % height);
+    do {
+        overAngle = qrand() % 360;
+    } while((int)overAngle % 90 < 15);
+    overRadius = 0.0f;
+    overBall = 0;
+    overPoint3 = overPoint1;
+    calcBall();
+}
+
+void MainWindow::calcBall() {
+    const double width = WIDTH_SHAPE_NUM * SIDE_LEN - SIDE_LEN;
+    const double height = HEIGHT_SHAPE_NUM * SIDE_LEN - SIDE_LEN;
+
+    if(overAngle < 90.0f) {
+        overAngle2 = std::atan(overPoint1.y() / (width - overPoint1.x())) * 180.0f / PI;
+        if(overAngle > overAngle2) {
+            overMaxRadius = overPoint1.y() / std::cos((90.0f - overAngle) * PI / 180.0f);
+            overPoint2.setX(overPoint1.x() + overMaxRadius * std::cos(overAngle * PI / 180.0f));
+            overPoint2.setY(0);
+        } else {
+            overMaxRadius = (width - overPoint1.x()) / std::cos(overAngle * PI / 180.0f);
+            overPoint2.setX(width);
+            overPoint2.setY(overPoint1.y() - overMaxRadius * std::sin(overAngle * PI / 180.0f));
+        }
+    } else if(overAngle < 180) {
+        overAngle2 = 180.0f - std::atan(overPoint1.y() / overPoint1.x()) * 180.0f / PI;
+        if(overAngle > overAngle2) {
+            overMaxRadius = overPoint1.x() / std::cos((180.0f-overAngle) * PI / 180.0f);
+            overPoint2.setX(0);
+            overPoint2.setY(overPoint1.y() - overMaxRadius * std::sin(overAngle * PI / 180.0f));
+        } else {
+            overMaxRadius = overPoint1.y() / std::cos((overAngle - 90.0f) * PI / 180.0f);
+            overPoint2.setX(overPoint1.x() + overMaxRadius * std::cos(overAngle * PI / 180.0f));
+            overPoint2.setY(0);
+        }
+    } else if(overAngle < 270) {
+        overAngle2 = 270.0f - std::atan(overPoint1.x() / (height - overPoint1.y())) * 180.0f / PI;
+        if(overAngle > overAngle2) {
+            overMaxRadius = (height - overPoint1.y()) / std::cos((270.0f - overAngle) * PI / 180.0f);
+            overPoint2.setX(overPoint1.x() + overMaxRadius * std::cos(overAngle * PI / 180.0f));
+            overPoint2.setY(height);
+        } else {
+            overMaxRadius = overPoint1.x() / std::cos((overAngle-180.0f) * PI / 180.0f);
+            overPoint2.setX(0);
+            overPoint2.setY(overPoint1.y() - overMaxRadius * std::sin(overAngle * PI / 180.0f));
+        }
+    } else {
+        overAngle2 = 360.0f - std::atan((height - overPoint1.y()) / (width - overPoint1.x())) * 180.0f / PI;
+        if(overAngle > overAngle2) {
+            overMaxRadius = (width - overPoint1.x()) / std::cos((360.0f - overAngle) * PI / 180.0f);
+            overPoint2.setX(width);
+            overPoint2.setY(overPoint1.y() - overMaxRadius * std::sin(overAngle * PI / 180.0f));
+        } else {
+            overMaxRadius = (height - overPoint1.y()) / std::cos((overAngle - 270.0f) * PI / 180.0f);
+            overPoint2.setX(overPoint1.x() + overMaxRadius * std::cos(overAngle * PI / 180.0f));
+            overPoint2.setY(height);
+        }
+    }
+
+    overBallColor = randColor();
+    overBall ++;
+    if(overBall > 99) overBall = 1;
+
+   //  cout << overBall << ": overAngle = " << overAngle << ", overAngle2 = " << overAngle2 << ", overMaxRadius = " << overMaxRadius << endl;
+}
+
+void MainWindow::paintBall(QPainter& painter) {
+    double x, y;
+    overRadius += 10.0f;
+    if(overRadius >= overMaxRadius) {
+        overRadius = 0.0f;
+        overPoint3 = overPoint1;
+        overPoint1 = overPoint2;
+        if(overAngle < 90.0f) {
+            if(overAngle > overAngle2) {
+                overAngle = 360.0f - (90.0f - (90.0f - overAngle));
+            } else {
+                overAngle = (90.0f - overAngle) + 90.0f;
+            }
+        } else if(overAngle < 180.0f) {
+            if(overAngle > overAngle2) {
+                overAngle = 90.0f - (90.0f - (180.0f - overAngle));
+            } else {
+                overAngle = 90.0f - (overAngle - 90.0f) + 180.0f;
+            }
+        } else if(overAngle < 270.0f) {
+            if(overAngle > overAngle2) {
+                overAngle = 180.0f - (90.0f - (270.0f - overAngle));
+            } else {
+                overAngle = 270.0f + (90.0f - (overAngle - 180.0f));
+            }
+        } else {
+            if(overAngle > overAngle2) {
+                overAngle = 270.0f - (90.0f - (360.0f - overAngle));
+            } else {
+                overAngle = 90.0f - (overAngle - 270.0f);
+            }
+        }
+        calcBall();
+        x = overPoint1.x();
+        y = overPoint1.y();
+    } else {
+        x = overPoint1.x() + overRadius * std::cos(overAngle * PI / 180);
+        y = overPoint1.y() - overRadius * std::sin(overAngle * PI / 180);
+    }
+
+#if 0
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0x33));
+    painter.drawEllipse(QRectF(WS_PX + overPoint3.x(), WS_PX + overPoint3.y(), SIDE_LEN, SIDE_LEN));
+    painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0x7f));
+    painter.drawEllipse(QRectF(WS_PX + overPoint1.x(), WS_PX + overPoint1.y(), SIDE_LEN, SIDE_LEN));
+    painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0xcc));
+    painter.drawEllipse(QRectF(WS_PX + overPoint2.x(), WS_PX + overPoint2.y(), SIDE_LEN, SIDE_LEN));
+
+    QPainterPath path;
+    path.moveTo(overPoint3.x() + WS_PX + SIDE_LEN / 2.0f, overPoint3.y() + WS_PX + SIDE_LEN / 2.0f);
+    path.lineTo(overPoint1.x() + WS_PX + SIDE_LEN / 2.0f, overPoint1.y() + WS_PX + SIDE_LEN / 2.0f);
+    path.lineTo(overPoint2.x() + WS_PX + SIDE_LEN / 2.0f, overPoint2.y() + WS_PX + SIDE_LEN / 2.0f);
+    painter.setPen(overBallColor);
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(path);
+#endif
+
+    painter.setPen(Qt::NoPen);
+
+    painter.setBrush(overBallColor);
+    QRectF rect(WS_PX + x, WS_PX + y, SIDE_LEN, SIDE_LEN);
+    painter.drawEllipse(rect);
+
+    painter.setFont(QFont(QString(""), SIDE_LEN/2, 100, false));
+    QString str = QString("%1").arg(overBall);
+    QRectF rect2(painter.boundingRect(rect, Qt::AlignCenter, str));
+    painter.setPen(Qt::white);
+    rect.moveTop(rect.y() + 3.0f);
+    painter.drawText(rect, Qt::AlignCenter, str, &rect2);
 }
