@@ -34,6 +34,7 @@ MainWindow::MainWindow(QWidget *parent) :
     initGame();
     overStep = -5;
     overTop = 0;
+    debugBall = false;
 }
 
 MainWindow::~MainWindow()
@@ -207,9 +208,9 @@ void MainWindow::paintEvent(QPaintEvent *e){
         }
     }
 
-    // 游戏结束
-    if(endGame){
-        QString str("游戏结束");
+    // 游戏结束/暂停
+    if(endGame || pauseGame){
+        QString str(endGame ? "游戏结束" : "游戏暂停");
 
         paintBall(painter);
 
@@ -273,8 +274,13 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(endGame) break;
         if(mainTimer->isActive()){
             mainTimer->stop();
+            pauseGame = true;
+            overBackColor = randColor();
+            overFrontColor = notColor(overBackColor);
+            initBall();
         }else{
             mainTimer->start();
+            pauseGame = false;
         }
         break;
     case(Qt::Key_F6):
@@ -282,6 +288,13 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         setNextShape();
         mainTimer->start();
         repaint();
+        break;
+    case(Qt::Key_D):
+        if(e->modifiers() & Qt::ControlModifier) {
+            debugBall = !debugBall; // 弹球调试线开关：Ctrl+D
+        }
+        break;
+    default:
         break;
     }
 }
@@ -379,6 +392,7 @@ bool MainWindow::ifMovable(int shape,int X,int Y){
 }
 void MainWindow::initGame(){
     endGame=false;
+    pauseGame=false;
     sX = sY = 0;
     curShape=0;
     nextShape=SHAPES[qrand()%SHAPE_NUM];
@@ -425,10 +439,12 @@ void MainWindow::setRecord(){
         scoreNum+=stack.size()*2-1;
         lineNum+=stack.count();
 
+#if 0
         std::cout << stack.size() << ':';
         for(y=0;y<stack.size();y++)
             std::cout << ' ' << stack.value(y);
         std::cout << std::endl;
+#endif
 
         y=stack.pop();
         size=1;
@@ -462,6 +478,7 @@ void MainWindow::initBall() {
     overRadius = 0.0f;
     overBall = 0;
     overPoint3 = overPoint1;
+    overPoint4 = overPoint1;
     calcBall();
 }
 
@@ -527,6 +544,7 @@ void MainWindow::paintBall(QPainter& painter) {
     overRadius += 10.0f;
     if(overRadius >= overMaxRadius) {
         overRadius = 0.0f;
+        overPoint4 = overPoint3;
         overPoint3 = overPoint1;
         overPoint1 = overPoint2;
         if(overAngle < 90.0f) {
@@ -562,23 +580,32 @@ void MainWindow::paintBall(QPainter& painter) {
         y = overPoint1.y() - overRadius * std::sin(overAngle * PI / 180);
     }
 
-#if 0
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0x33));
-    painter.drawEllipse(QRectF(WS_PX + overPoint3.x(), WS_PX + overPoint3.y(), SIDE_LEN, SIDE_LEN));
-    painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0x7f));
-    painter.drawEllipse(QRectF(WS_PX + overPoint1.x(), WS_PX + overPoint1.y(), SIDE_LEN, SIDE_LEN));
-    painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0xcc));
-    painter.drawEllipse(QRectF(WS_PX + overPoint2.x(), WS_PX + overPoint2.y(), SIDE_LEN, SIDE_LEN));
+    if(debugBall) {
+        painter.setPen(QColor(overBallColor.red()-0x33, overBallColor.green()-0x33, overBallColor.blue()-0x33, 0x33));
+        painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0x33));
+        painter.drawEllipse(QRectF(WS_PX + overPoint4.x(), WS_PX + overPoint4.y(), SIDE_LEN, SIDE_LEN));
 
-    QPainterPath path;
-    path.moveTo(overPoint3.x() + WS_PX + SIDE_LEN / 2.0f, overPoint3.y() + WS_PX + SIDE_LEN / 2.0f);
-    path.lineTo(overPoint1.x() + WS_PX + SIDE_LEN / 2.0f, overPoint1.y() + WS_PX + SIDE_LEN / 2.0f);
-    path.lineTo(overPoint2.x() + WS_PX + SIDE_LEN / 2.0f, overPoint2.y() + WS_PX + SIDE_LEN / 2.0f);
-    painter.setPen(overBallColor);
-    painter.setBrush(Qt::NoBrush);
-    painter.drawPath(path);
-#endif
+        painter.setPen(QColor(overBallColor.red()-0x33, overBallColor.green()-0x33, overBallColor.blue()-0x33, 0x66));
+        painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0x66));
+        painter.drawEllipse(QRectF(WS_PX + overPoint3.x(), WS_PX + overPoint3.y(), SIDE_LEN, SIDE_LEN));
+
+        painter.setPen(QColor(overBallColor.red()-0x33, overBallColor.green()-0x33, overBallColor.blue()-0x33, 0x99));
+        painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0x99));
+        painter.drawEllipse(QRectF(WS_PX + overPoint1.x(), WS_PX + overPoint1.y(), SIDE_LEN, SIDE_LEN));
+
+        painter.setPen(QColor(overBallColor.red()-0x33, overBallColor.green()-0x33, overBallColor.blue()-0x33, 0xcc));
+        painter.setBrush(QColor(overBallColor.red(), overBallColor.green(), overBallColor.blue(), 0xcc));
+        painter.drawEllipse(QRectF(WS_PX + overPoint2.x(), WS_PX + overPoint2.y(), SIDE_LEN, SIDE_LEN));
+
+        QPainterPath path;
+        path.moveTo(overPoint4.x() + WS_PX + SIDE_LEN / 2.0f, overPoint4.y() + WS_PX + SIDE_LEN / 2.0f);
+        path.lineTo(overPoint3.x() + WS_PX + SIDE_LEN / 2.0f, overPoint3.y() + WS_PX + SIDE_LEN / 2.0f);
+        path.lineTo(overPoint1.x() + WS_PX + SIDE_LEN / 2.0f, overPoint1.y() + WS_PX + SIDE_LEN / 2.0f);
+        path.lineTo(overPoint2.x() + WS_PX + SIDE_LEN / 2.0f, overPoint2.y() + WS_PX + SIDE_LEN / 2.0f);
+        painter.setPen(overBallColor);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPath(path);
+    }
 
     painter.setPen(Qt::NoPen);
 

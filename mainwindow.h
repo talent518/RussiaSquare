@@ -72,11 +72,12 @@ private:
     QColor overBackColor, overFrontColor;
     int overStep;
     int overTop;
-    QPointF overPoint1, overPoint2, overPoint3;
+    QPointF overPoint1, overPoint2, overPoint3, overPoint4;
     double overAngle, overAngle2, overRadius, overMaxRadius;
     QColor overBallColor;
     int overBall;
-    bool endGame;
+    bool debugBall;
+    bool endGame, pauseGame;
 
 public slots:
     void secondTimerEvent();
