@@ -9,13 +9,13 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>573</width>
-    <height>553</height>
+    <width>158</width>
+    <height>158</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>573</width>
+    <width>0</width>
     <height>0</height>
    </size>
   </property>
@@ -28,6 +28,9 @@
   <property name="windowIcon">
    <iconset resource="icon.qrc">
     <normaloff>:/images/RussiaSquare.png</normaloff>:/images/RussiaSquare.png</iconset>
+  </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
   </property>
   <property name="windowFilePath">
    <string notr="true"/>

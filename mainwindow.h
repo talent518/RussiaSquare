@@ -12,15 +12,15 @@
 #include <string>
 #include <QStack>
 
-const int SIDE_LEN=20;
-const int HEIGHT_SHAPE_NUM=20;
-const int WIDTH_SHAPE_NUM=10;
-const int INIT_X=3;
-const int INIT_Y=-1;
-const int SHAPE_NUM=7;
-const int COLOR_NUM=4;
-const int SHAPES[7]={0x4444,0x4460,0x2260,0x0C60,0x06C0,0x0660,0x04E0};
-const int COLORS[COLOR_NUM]={51,102,153,204};
+const int WS_PX = 15;
+const int SIDE_LEN = 30;
+const int HEIGHT_SHAPE_NUM = 20;
+const int WIDTH_SHAPE_NUM = 10;
+const int SHAPES[]={0x4444,0x4460,0x2260,0x0C60,0x06C0,0x0660,0x04E0};
+const int SHAPE_NUM=sizeof(SHAPES)/sizeof(int);
+const int COLORS[]={0x33,0x66,0x99,0xcc};
+const int COLOR_NUM=sizeof(COLORS)/sizeof(int);
+const double PI = 3.14159265f;
 
 using namespace std;
 
@@ -29,11 +29,11 @@ namespace Ui {
 }
 
 enum Move{
-    Up=1,//±äĞÎ
-    Down=2,//¼ÓËÙ
-    qDown=3,//Ö±Âä
-    Left=4,//×óÒÆ
-    Right=5//ÓÒÒÆ
+    Up=1,//å˜å½¢
+    Down=2,//åŠ é€Ÿ
+    qDown=3,//ç›´è½
+    Left=4,//å·¦ç§»
+    Right=5//å³ç§»
 };
 
 class MainWindow : public QMainWindow
@@ -46,26 +46,38 @@ public:
 
 protected:
     void changeEvent(QEvent *e);
-    void paintEvent(QPaintEvent *e);//»æÍ¼
-    void keyPressEvent(QKeyEvent *e);//°´¼üÊÂ¼ş
-    void moveShape(Move m);//ÒÆ¶¯ºÍ±äĞÎ
-    bool getPointB(int p,int x,int y);//»ñÈ¡ĞÎ×´X,YÊÇ·ñÓĞ·½¿é
-    void setNextShape();//ÏÂÒ»¸öĞÎ×´
-    int rotateShape(int shape);//Ğı×ªĞÎ×´
-    bool ifMovable(int shape,int x,int y);//ÊÇ·ñ¿ÉÒÆ¶¯
+    void paintEvent(QPaintEvent *e);//ç»˜å›¾
+    void keyPressEvent(QKeyEvent *e);//æŒ‰é”®äº‹ä»¶
+    void moveShape(Move m);//ç§»åŠ¨å’Œå˜å½¢
+    bool getPointB(int p,int x,int y);//è·å–å½¢çŠ¶X,Yæ˜¯å¦æœ‰æ–¹å—
+    void setNextShape();//ä¸‹ä¸€ä¸ªå½¢çŠ¶
+    int rotateShape(int shape);//æ—‹è½¬å½¢çŠ¶
+    bool ifMovable(int shape,int x,int y);//æ˜¯å¦å¯ç§»åŠ¨
     void initGame();
     QColor randColor();
     void setRecord();
 
+    void initBall();
+    void calcBall();
+    void paintBall(QPainter& painter);
+
 private:
     Ui::MainWindow *ui;
-    int sX,sY,scoreNum,lineNum;//µ±Ç°X,Y×ø±ê,µÃ·Ö¼°ĞĞÊı
-    QTimer *mainTimer,*secondTimer;//Ö÷´Ó¼ÆÊ±Æ÷
-    bool squareRecords[WIDTH_SHAPE_NUM][HEIGHT_SHAPE_NUM];//Í¼ĞÎ¼ÇÂ¼
-    QColor colorRecords[WIDTH_SHAPE_NUM][HEIGHT_SHAPE_NUM];//ÑÕÉ«¼ÇÂ¼
-    int curShape,nextShape;//µ±Ç°ĞÎ×´ºÍÏÂÒ»¸öĞÎ×´
-    QColor curColor,nextColor;//µ±Ç°ÑÕÉ«ºÍÏÂÒ»¸öÑÕÉ«
-    bool endGame;
+    int sX,sY,scoreNum,lineNum;//å½“å‰X,Yåæ ‡,å¾—åˆ†åŠè¡Œæ•°
+    QTimer *mainTimer,*secondTimer;//ä¸»ä»è®¡æ—¶å™¨
+    bool squareRecords[HEIGHT_SHAPE_NUM][WIDTH_SHAPE_NUM];//å›¾å½¢è®°å½•
+    QColor colorRecords[HEIGHT_SHAPE_NUM][WIDTH_SHAPE_NUM];//é¢œè‰²è®°å½•
+    int curShape,nextShape;//å½“å‰å½¢çŠ¶å’Œä¸‹ä¸€ä¸ªå½¢çŠ¶
+    QColor curColor,nextColor;//å½“å‰é¢œè‰²å’Œä¸‹ä¸€ä¸ªé¢œè‰²
+    QColor overBackColor, overFrontColor;
+    int overStep;
+    int overTop;
+    QPointF overPoint1, overPoint2, overPoint3, overPoint4;
+    double overAngle, overAngle2, overRadius, overMaxRadius;
+    QColor overBallColor;
+    int overBall;
+    bool debugBall;
+    bool endGame, pauseGame;
 
 public slots:
     void secondTimerEvent();
